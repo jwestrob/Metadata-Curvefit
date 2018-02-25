@@ -12,7 +12,7 @@
 
 ## The R package dependencies for this script (as of version 0.1.0) are:
 
->argparse
->dplyr
->tidyr
+>argparse,
+>dplyr,
+>tidyr,
 >ggplot2
