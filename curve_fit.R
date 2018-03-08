@@ -118,21 +118,21 @@ if(nonbinary){
   nonbinary <- numeric %>% select_if(function(col) !all(na.omit(col) %in% 0:1))
   cat("\nNonbinary numeric columns: \n \n")
   print(names(nonbinary))
-  if(args$boxplot){show_boxplot(nonbinary)}
+  if(boxplot){show_boxplot(nonbinary)}
 }
 
 if(disp_numeric){
   #Print names of all columns in metadata which contain numeric variables
   cat("\nNumeric columns: \n \n")
   print(names(metadata %>% select_if(function(col) all(is.numeric(col)))))
-  if(args$boxplot){show_boxplot(metadata %>% select_if(function(col) all(is.numeric(col))))}
+  if(boxplot){show_boxplot(metadata %>% select_if(function(col) all(is.numeric(col))))}
 }
 
 if(binary){
   #Selects all columns containing only binary data
   cat("\nBinary columns: \n \n")
   print(names(metadata %>% select_if(function(col) all(na.omit(col) %in% 0:1))))
-  if(args$boxplot){show_boxplot(metadata %>% select_if(function(col) all(na.omit(col) %in% 0:1)))}
+  if(boxplot){show_boxplot(metadata %>% select_if(function(col) all(na.omit(col) %in% 0:1)))}
 }
 
 #Quit after displaying column names with particular attributes
@@ -147,13 +147,13 @@ if(columns[[1]] == "ALL"){
 
   #Store dates separately
   ID_and_dates <- metadata[c("ID", "Visit_DT")]
-  print(nrow(ID_and_dates))
-
 
   #Select columns from metadata which contain numeric variables and no NAs
   numeric_without_dates <- metadata %>% select_if(function(col) all(is.numeric(col)))
+
   #Stick the dates column between the ID column and everything else
   reduced_meta_unfiltered <- cbind(ID_and_dates, subset(numeric_without_dates, select=-ID))
+
   #Filter out rows with inadequate n_samples
   reduced_meta <- ID_filter(reduced_meta_unfiltered)
 
@@ -174,7 +174,7 @@ if(columns[[1]] == "ALL"){
 
 } else{
   #Select only specified columns and ID column
-  reduced_meta_wnans_unfiltered <- metadata[c("ID", "Visit_DT", args$columns)]
+  reduced_meta_wnans_unfiltered <- metadata[c("ID", "Visit_DT", columns)]
   #Remove rows corresponding to IDs with insufficient n_samples
   reduced_meta <- ID_filter(reduced_meta_wnans_unfiltered)
 
@@ -334,10 +334,7 @@ print("OK")
 cat("Writing csv to: ")
 print(outfile)
 write.csv(param_df, outfile)
-cat("Constructing spaghetti plot.\n")
 stop()
-#NOT READY YET
-spaghetti(param_df)
 
 
 
