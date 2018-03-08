@@ -311,12 +311,14 @@ param_df_constructor <- function(reduced_meta, ID_list){
   return(param_df)
 }
 
-spaghetti <- function(column, param_df){
-  #Need date/time. Try making a scatterplot first, then worry about the lines.
-  X11()
-  message("Press Return To Continue")
-  invisible(readLines("stdin", n=1))
-  return
+add_fitlines <- function(df, col_name){
+    col_a_name = paste(col_name, 'a', sep='_')
+    col_b_name = paste(col_name, 'b', sep='_')
+    plot <- ggplot(norm.dates, aes(x=norm.dates, y=BMI)) + geom_point()
+    for(i in 1:ncol(df)){
+        plot <- plot + geom_abline(slope=df[i,col_b_name], intercept=df[i,col_a_name])
+        }
+    return(plot)
 }
 
 
@@ -325,6 +327,9 @@ reduced_meta$int_date <- unlist(lapply(reduced_meta$Visit_DT, FUN=date_range_con
 
 #Create column of dates normalized so that the first visit is day 0 (norm.dates)
 reduced_meta_wnorm <- normalized_date_column_constructor(reduced_meta)
+
+#DEBUG ONLY:
+write.csv(reduced_meta_wnorm, 'normalized_dates.csv')
 
 
 #Create DF with rows corresponding to IDs and columns containing curve parameters
