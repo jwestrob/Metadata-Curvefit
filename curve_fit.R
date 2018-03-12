@@ -1,12 +1,9 @@
-library('argparse')
-options(warn=-1)
-suppressPackageStartupMessages(library('dplyr'))
-options(warn=0)
-library('tidyr')
-library('ggplot2')
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(argparse, dplyr, tidyr, ggplot2)
+
 
 #load argument parser
-parser <- ArgumentParser(description="Create a set of polynomial features out of numerical data in tabular format (csv please). Specify the degree of the polynomial you want (-m), optionally the columns you want (-c).")
+parser <- ArgumentParser(description="Create a set of polynomial features out of numerical data in tabular format (csv please). Specify the degree of the polynomial you want (-m), or optionally the columns you want to operate on (-c).")
 
 #Specify options
 parser$add_argument("-i", "--infile", type="character", nargs=1,
@@ -49,6 +46,7 @@ binary <- args$binary
 nonbinary <- args$nonbinary
 histogram <- args$histogram
 outfile <- args$outfile
+pdfout <- args$pdfout
 
 if(mode == 'linear'){
   tolerance <- 2
@@ -311,12 +309,12 @@ param_df_constructor <- function(reduced_meta, ID_list){
   return(param_df)
 }
 
-add_fitlines <- function(df, col_name){
+add_fitlines <- function(col_name){
     col_a_name = paste(col_name, 'a', sep='_')
     col_b_name = paste(col_name, 'b', sep='_')
-    plot <- ggplot(norm.dates, aes(x=norm.dates, y=BMI)) + geom_point()
-    for(i in 1:ncol(df)){
-        plot <- plot + geom_abline(slope=df[i,col_b_name], intercept=df[i,col_a_name])
+    plot <- ggplot(reduced_meta_wnorm, aes_string(x='norm.dates', y=col_name)) + geom_point() + ggtitle(col_name)
+    for(i in 1:ncol(param_df)){
+        plot <- plot + geom_abline(slope=param_df[i,col_b_name], intercept=param_df[i,col_a_name])
         }
     return(plot)
 }
@@ -329,18 +327,28 @@ reduced_meta$int_date <- unlist(lapply(reduced_meta$Visit_DT, FUN=date_range_con
 reduced_meta_wnorm <- normalized_date_column_constructor(reduced_meta)
 
 #DEBUG ONLY:
-write.csv(reduced_meta_wnorm, 'normalized_dates.csv')
-
+#write.csv(reduced_meta_wnorm, 'normalized_dates.csv')
 
 #Create DF with rows corresponding to IDs and columns containing curve parameters
 param_df <- param_df_constructor(reduced_meta_wnorm, ID_list)
 
-print("OK")
-cat("Writing csv to: ")
+names_list <- colnames(reduced_meta_wnorm)
+names_list_without_id <- names_list[-c(1, 2)]
+
+cat("Generating plots...")
+
+plot_list <- lapply(names_list_without_id, FUN=add_fitlines)
+
+cat("Plots successfully generated. Saving to PDF...")
+
+pdf(pdfout)
+invisible(lapply(plot_list, print))
+dev.off()
+
+cat("PDF saved to... ", pdfout)
+
+cat("\nWriting csv to: ")
 print(outfile)
 write.csv(param_df, outfile)
-stop()
 
-
-
-print("Execution complete; pending addition of .pdf construction subroutine.")
+cat("Execution complete; pending addition of quadratic and cubic subroutines.")
