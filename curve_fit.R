@@ -1,5 +1,5 @@
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(argparse, dplyr, tidyr, ggplot2)
+pacman::p_load(argparse, dplyr, tidyr, ggplot2, hash)
 
 
 #load argument parser
@@ -141,7 +141,7 @@ if(disp_numeric || binary || nonbinary){stop()}
 ####################################################
 
 if(columns[[1]] == "ALL"){
-  print("No columns specified. Proceeding with analysis on all continuous numerical columns.")
+  cat("No columns specified. Proceeding with analysis on all continuous numerical columns.")
 
   #Store dates separately
   ID_and_dates <- metadata[c("ID", "Visit_DT")]
@@ -203,12 +203,15 @@ date.lookup <- format(seq(as.Date("1980-01-01"), as.Date("2025-01-01"), by="1 da
 
 normalized_date_column_constructor <- function(param_df){
   normalizer<-function(ID, ID_DF){
+    #Takes a series of dates and creates a list; day of first visit is day 0
     ID_red_DF <- ID_DF[ID_DF$ID == ID,]
     dates = ID_red_DF$int_date
     min_date = min(dates)
     norm.dates = dates - min_date
   }
+  #Map normalizer function to dataframe to produce normalized date column
   norm.dates <- unlist(lapply(ID_list, FUN=normalizer, ID_DF=param_df))
+  #Add normalized date column to dataframe
   param_df$norm.dates <- norm.dates
   return(param_df)
 }
@@ -288,6 +291,7 @@ param_df_constructor <- function(reduced_meta, ID_list){
   #Create labels for parameters
   ID <- c("ID")
   header <- c()
+  #Makes a new header for output dataframe with a and b (intercept and slope) fields for each variable
   header <- lapply(non_id_colnames, header_name_generator, header=header)
 
   #Sorry for mutating data
@@ -309,12 +313,23 @@ param_df_constructor <- function(reduced_meta, ID_list){
   return(param_df)
 }
 
-add_fitlines <- function(col_name){
+hash_slinging_slasher <- function(ID_list, colorscheme){
+  #Creates a hash; entering an ID gets a unique, ordered number for that ID
+  ID_colors <- hash()
+  for(i in 1:length(ID_list)){
+    ID_colors[i] <- ID_list[[i]]
+  }
+  return(invert(ID_colors))
+}
+
+add_fitlines <- function(col_name, hash){
+    cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
     col_a_name = paste(col_name, 'a', sep='_')
     col_b_name = paste(col_name, 'b', sep='_')
-    plot <- ggplot(reduced_meta_wnorm, aes_string(x='norm.dates', y=col_name)) + geom_point() + ggtitle(col_name)
+    plot <- ggplot(reduced_meta_wnorm, aes_string(x='norm.dates', y=col_name, colour=factor(ID))) + geom_point() + ggtitle(col_name)
     for(i in 1:ncol(param_df)){
-        plot <- plot + geom_abline(slope=param_df[i,col_b_name], intercept=param_df[i,col_a_name])
+        #Add individual fit lines to the plot; iterate through colors in cbbPalette, rotating through available selections in sequence
+        plot <- plot + geom_abline(slope=param_df[i,col_b_name], intercept=param_df[i,col_a_name], colour=cbbPalette[[(i %% length(cbbPalette)) + 1]])
         }
     return(plot)
 }
@@ -337,9 +352,13 @@ names_list_without_id <- names_list[-c(1, 2)]
 
 cat("Generating plots...")
 
+hash <- hash_slinging_slasher(ID_list)
+print(class(hash))
+stop()
+
 plot_list <- lapply(names_list_without_id, FUN=add_fitlines)
 
-cat("Plots successfully generated. Saving to PDF...")
+cat("\nPlots successfully generated. Saving to PDF...")
 
 pdf(pdfout)
 invisible(lapply(plot_list, print))
