@@ -28,6 +28,8 @@ parser$add_argument("-nb", "--nonbinary", action="store_true", default=FALSE,
     help="OPTIONAL: Print names of columns containing nonbinary numeric data, then exit.")
 parser$add_argument("-hist", "--histogram", action="store_true", default=FALSE,
     help="OPTIONAL: Show histogram of IDs. (More functionality to be added later)")
+parser$add_argument("-gm", "--graph_mode", action="store_true", default=FALSE,
+    help="OPTIONAL: Use base R package to plot fit lines.")
 
 ########################################
 #              READ DATA               #
@@ -47,6 +49,7 @@ nonbinary <- args$nonbinary
 histogram <- args$histogram
 outfile <- args$outfile
 pdfout <- args$pdfout
+graph_mode <- args$graph_mode
 
 if(mode == 'linear'){
   tolerance <- 2
@@ -322,7 +325,7 @@ hash_slinging_slasher <- function(ID_list, colorscheme){
   return(invert(ID_colors))
 }
 
-add_fitlines <- function(col_name, hash){
+add_fitlines_g <- function(col_name, hash){
     cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
     col_a_name = paste(col_name, 'a', sep='_')
     col_b_name = paste(col_name, 'b', sep='_')
@@ -352,18 +355,35 @@ names_list_without_id <- names_list[-c(1, 2)]
 
 cat("Generating plots...")
 
-hash <- hash_slinging_slasher(ID_list)
-print(class(hash))
-stop()
-
-plot_list <- lapply(names_list_without_id, FUN=add_fitlines)
+if(!graph_mode){
+#Default: Use ggplot2
+plot_list <- lapply(names_list_without_id, FUN=add_fitlines_g)
 
 cat("\nPlots successfully generated. Saving to PDF...")
 
 pdf(pdfout)
 invisible(lapply(plot_list, print))
 dev.off()
+}else{
+  pdf(pdfout)
+  cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  for(name in names_list_without_id){
+    #print(name)
+    #print(reduced_meta_wnorm[name])
+    #print(reduced_meta_wnorm['norm.dates'])
 
+    colname_a = paste(name, 'a', sep='_')
+    colname_b = paste(name, 'b', sep='_')
+    testplot <- sapply(reduced_meta_wnorm[name], as.numeric)
+    plot(reduced_meta_wnorm$norm.dates, testplot, main=name, xlab="norm.dates", ylab=name)
+    for(i in 1:ncol(param_df)){
+      red_param_df = param_df[i, c(colname_a, colname_b)]
+      if(!any(is.na(red_param_df))){
+      abline(param_df[i, colname_a], param_df[i,colname_b], col=cbbPalette[[(i %% length(cbbPalette)) + 1]])}
+    }
+  }
+  dev.off()
+}
 cat("PDF saved to... ", pdfout)
 
 cat("\nWriting csv to: ")
