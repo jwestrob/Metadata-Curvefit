@@ -1,5 +1,5 @@
 if (!require("pacman")) install.packages("pacman")
-pacman::p_load(argparse, dplyr, tidyr, ggplot2, hash)
+pacman::p_load(argparse, dplyr, tidyr, ggplot2, gplots)
 
 
 #load argument parser
@@ -29,7 +29,7 @@ parser$add_argument("-nb", "--nonbinary", action="store_true", default=FALSE,
 parser$add_argument("-hist", "--histogram", action="store_true", default=FALSE,
     help="OPTIONAL: Show histogram of IDs. (More functionality to be added later)")
 parser$add_argument("-gm", "--graph_mode", action="store_true", default=FALSE,
-    help="OPTIONAL: Use base R package to plot fit lines.")
+    help="OPTIONAL: Use ggplot2 R package to plot fit lines.")
 
 ########################################
 #              READ DATA               #
@@ -98,10 +98,33 @@ show_hist <- function(column, stepsize){
   invisible(readLines("stdin", n=1))
 }
 
+scatter <- function(x, y, df){
+  X11()
+  cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  print(cbbPalette[df$ID])
+  plot(x, y, col=cbbPalette[df$ID])
+  message("Press Return To Continue")
+  invisible(readLines("stdin", n=1))
+}
+
 ID_filter <- function(dataframe){
   #Keep only rows with IDs that occur number of times specified by degree of desired polynomial fit
   #Ex.: If you have two points there's no reason to fit a parabola to them. Same with three points and a cubic.
   new_md <- dataframe[dataframe$ID %in% names(table(dataframe$ID))[table(dataframe$ID) >= tolerance],]
+}
+
+color_constructor <- function(ID_col, Palette){
+  color_range <- vector("list", length=max(unique(ID_col)))
+  #color_map <- function(x, Palette, list){list[[x]] <- Palette[[(x %% length(Palette)) + 1]]}
+  for(i in 1:max(unique(ID_col))){
+    if(i %in% unique(ID_col)){
+      color_range[[i]] <- Palette[[(i %% length(Palette)) + 1]]
+    }else{
+      color_range[[i]] <- "#000000"
+    }
+  }
+  #color_range <- lapply(unique(ID_col), FUN=color_map, Palette=Palette, list=color_range)
+  names(color_range) <- seq(1, max(unique(ID_col)))
 }
 
 ########################################
@@ -355,8 +378,8 @@ names_list_without_id <- names_list[-c(1, 2)]
 
 cat("Generating plots...")
 
-if(!graph_mode){
-#Default: Use ggplot2
+if(graph_mode){
+#Optional: Use ggplot2
 plot_list <- lapply(names_list_without_id, FUN=add_fitlines_g)
 
 cat("\nPlots successfully generated. Saving to PDF...")
@@ -366,7 +389,9 @@ invisible(lapply(plot_list, print))
 dev.off()
 }else{
   pdf(pdfout)
+  par(mfrow=c(2,2))
   cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+  Palette <- color_constructor(reduced_meta_wnorm$ID, cbbPalette)
   for(name in names_list_without_id){
     #print(name)
     #print(reduced_meta_wnorm[name])
@@ -375,12 +400,25 @@ dev.off()
     colname_a = paste(name, 'a', sep='_')
     colname_b = paste(name, 'b', sep='_')
     testplot <- sapply(reduced_meta_wnorm[name], as.numeric)
-    plot(reduced_meta_wnorm$norm.dates, testplot, main=name, xlab="norm.dates", ylab=name)
+    if(FALSE){
+      X11()
+      plot(reduced_meta_wnorm$norm.dates, testplot, col=Palette[reduced_meta_wnorm$ID])
+      message("Press Return To Continue")
+      invisible(readLines("stdin", n=1))
+      print(reduced_meta_wnorm[name])
+      show_hist(reduced_meta_wnorm[name])
+    }
+    plot(reduced_meta_wnorm$norm.dates, testplot, col=Palette[reduced_meta_wnorm$ID], main=name, xlab="norm.dates", ylab=name)
     for(i in 1:ncol(param_df)){
       red_param_df = param_df[i, c(colname_a, colname_b)]
       if(!any(is.na(red_param_df))){
-      abline(param_df[i, colname_a], param_df[i,colname_b], col=cbbPalette[[(i %% length(cbbPalette)) + 1]])}
+      abline(param_df[i, colname_a], param_df[i,colname_b], col=Palette[param_df$ID[i]])}
     }
+  info1 <- sapply(param_df[colname_a], function(x) round(c(Mean=mean(x), SD=sd(x), N=gdata::nobs(x)),2))
+  info2 <- sapply(param_df[colname_b], function(x) round(c(Mean=mean(x), SD=sd(x), N=gdata::nobs(x)),2))
+  if(!all(is.na(param_df[colname_a]))){boxplot(param_df[colname_a], main=colname_a)}else{textplot(info1)}
+  if(!all(is.na(param_df[colname_b]))){boxplot(param_df[colname_b], main=colname_b)}else{textplot(info2, valign="top")}
+  boxplot(reduced_meta_wnorm[name], main=name)
   }
   dev.off()
 }

@@ -5,4 +5,4 @@
 *.ipynb
 *.html
 TODO
-./Plots/
+Plots/
