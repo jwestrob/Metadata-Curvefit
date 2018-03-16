@@ -1,6 +1,6 @@
 # Metadata-Curvefit
 
-## This package is intended to assist in statistical analysis of medical metadata by creating polynomial fits to numeric columns in tabular data for downstream analysis.
+## This package is intended to assist in statistical analysis of longitudinal medical metadata by creating polynomial fits to numeric columns in tabular data for downstream analysis.
 
 ## General usage is as follows:
 
@@ -12,6 +12,8 @@
 
 ## The R package dependencies for this script (as of version 0.1.0) are:
 
+>Pacman,
+>gplots,
 >argparse,
 >dplyr,
 >tidyr,
