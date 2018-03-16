@@ -252,9 +252,18 @@ date_range_constructor <- function(date){
 curve_fit <- function(df_column, dates){
   if(mode == "linear"){
     if(any(is.na(df_column))){
-      #Don't do any analysis if at least one row of column contains an NA field
-      return(list(NA, NA))
+      #If there aren't at least two elements, return NA
+      if(length(df_column) - sum(is.na(df_column)) < 2){
+        return(list(NA, NA))
+      }else{
+        #Save copy of df_column bc i'm a scrub and i'm mutating data
+        df_column_orig <- df_column
+        #Otherwise, eliminate the row(s) containing NA and perform regression.
+        df_column <- df_column[!is.na(df_column)]
+        dates <- dates[!is.na(df_column_orig)]
+      }
     }
+
 
     #Perform linear least-squares regression
     curve <- lm(df_column ~ dates)
